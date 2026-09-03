@@ -1,0 +1,53 @@
+---
+title: "Tugas-Pertemuan-3"
+author: "Rai Kazan"
+date: "2026-09-03"
+output:   
+  html_document:
+    theme: flatly
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+---
+
+# Library
+
+```{r}
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(lmtest)
+library(car)
+```
+
+# Import Data
+
+```{r}
+data <- rio::import("https://raw.githubusercontent.com/Rkzz-dr/mpdw/refs/heads/main/Pertemuan%203/NewDelhi_Air_quality.csv")
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
