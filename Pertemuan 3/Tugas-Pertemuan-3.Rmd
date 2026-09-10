@@ -26,28 +26,162 @@ library(car)
 
 ```{r}
 data <- rio::import("https://raw.githubusercontent.com/Rkzz-dr/mpdw/refs/heads/main/Pertemuan%203/NewDelhi_Air_quality.csv")
+
+# Membagi data
+train <- data[1:58,]
+test <- data[59:72,]
+
+# Mengubah format data menjadi objek Time Series (ts)
+train.ts <- ts(train)
+test.ts <- ts(test)
+data.ts <- ts(data)
+```
+
+# Koyck
+
+## Pemodelan
+
+```{r}
+model.koyck <- koyckDlm(x = train$pm25, y = train$AQI)
+summary(model.koyck)
+```
+
+## Peramalan
+
+Meramalkan 14 periode kedepan
+```{r}
+fore.koyck <- forecast(model = model.koyck, x = test$pm25, h = 14)
+fore.koyck
 ```
 
 ```{r}
+mape.koyck <- MAPE(fore.koyck$forecasts, test$AQI)
+cat("MAPE Model Koyck:", mape.koyck, "\n")
+```
 
+# Regression with Distributed Lag (DLM)
+
+## Pemodelan (Lag = 2)
+
+```{r}
+model.dlm <- dlm(x = train$pm25, y = train$AQI, q = 2)
+summary(model.dlm)
+```
+
+## Penentuan Lag Optimum
+
+```{r}
+finiteDLMauto(formula = AQI ~ pm25,
+              data = data.frame(train), q.min = 1, q.max = 15,
+              model.type = "dlm", error.type = "AIC", trace = TRUE)
+```
+
+Nilai AIC terkecil terdapat di q=15, maka bangun ulang DLM dengan q=15
+
+```{r}
+model.dlm.opt <- dlm(x = train$pm25, y = train$AQI, q = 15)
+summary(model.dlm.opt)
 ```
 
 ```{r}
-
+fore.dlm.opt <- forecast(model = model.dlm.opt, x = test$pm25, h = 14)
+mape.dlm.opt <- MAPE(fore.dlm.opt$forecasts, test$AQI)
+cat("MAPE Model DLM Optimum:", mape.dlm.opt, "\n")
 ```
 
+# Autoregressive Distributed Lag (ARDL)
+
+## Pemodelan
+
+Modelkan dengan lag X = 1 dan lag Y = 1
 ```{r}
 
+model.ardl <- ardlDlm(formula = AQI ~ pm25, data = train, p = 1, q = 1)
+summary(model.ardl)
 ```
 
-```{r}
+## Lag Optimum ARDL
 
+```{r}
+model.ardl.opt <- ardlBoundOrders(data = data.frame(data), ic = "AIC", formula = AQI ~ pm25)
+
+# Menarik kombinasi lag dengan AIC terkecil
+min_p <- c()
+for(i in 1:6){
+  min_p[i] <- min(model.ardl.opt$Stat.table[[i]])
+}
+q_opt <- which(min_p == min(min_p, na.rm = TRUE))
+p_opt <- which(model.ardl.opt$Stat.table[[q_opt]] == min(model.ardl.opt$Stat.table[[q_opt]], na.rm = TRUE))
+
+data.frame("Lag_Y_opt(q)" = q_opt, "Lag_X_opt(p)" = p_opt, "AIC" = model.ardl.opt$min.Stat)
 ```
 
-```{r}
+Didapat lag optimum dengan p=15 dan q=5
 
+```{r}
+fore.ardl <- forecast(model = model.ardl, x = test$pm25, h = 14)
+mape.ardl <- MAPE(fore.ardl$forecasts, test$AQI)
+cat("MAPE Model ARDL (15,5):", mape.ardl, "\n")
 ```
 
-```{r}
+# UJi Asumsi
 
+Pembuatan Model
+```{r}
+cons_lm1 <- dynlm(AQI ~ pm25 + L(pm25), data = train.ts)
+
+cons_lm2 <- dynlm(AQI ~ pm25 + L(AQI), data = train.ts)
+
+cons_lm3 <- dynlm(AQI ~ pm25 + L(pm25) + L(AQI), data = train.ts)
+```
+
+## Uji Autokorelasi
+
+```{r}
+dwtest(cons_lm1)
+```
+
+Karena p-value < 0.05 (1.217e-15), maka tolak H0, artinya terdapat autokorelasi pada sisaan
+
+## Uji Heteroskedastisitas
+
+```{r}
+bptest(cons_lm1)
+```
+
+Karena p-value < 0.05 (0.004712), maka tolak H0, artinya ragam sisaan tidak homogen (terjadi heteroskedastisitas)
+
+## Uji Normalitas
+
+```{r}
+shapiro.test(residuals(cons_lm1))
+```
+
+Karena p-value > 0.05 (0.05818), maka gagal tolak H0, artinya sisaan berdistribusi normal
+
+# Perbandingan Performa Model
+
+## Akurasi
+
+```{r}
+akurasi <- matrix(c(mape.koyck, mape.dlm.opt, mape.ardl))
+row.names(akurasi) <- c("Koyck", "DLM Optimum", "ARDL (1,1)")
+colnames(akurasi) <- c("MAPE")
+print(akurasi)
+```
+
+## Visualisasi Aktual vs Peramalan
+
+```{r}
+waktu_test <- 1:nrow(test)
+par(mfrow=c(1,1))
+plot(waktu_test, test$AQI, type="b", col="black", lwd=2, 
+     ylab="Nilai AQI", xlab="Periode Waktu", main="Perbandingan Model Peramalan")
+
+lines(waktu_test, fore.koyck$forecasts, col="red", type="b", pch=16)
+lines(waktu_test, fore.dlm.opt$forecasts, col="blue", type="b", pch=17)
+lines(waktu_test, fore.ardl$forecasts, col="green", type="b", pch=18)
+
+legend("topleft", legend=c("Aktual", "Koyck", "DLM Optimum", "ARDL (15,5)"),
+       col=c("black","red","blue","green"), lty=1, pch=c(1,16,17,18), cex=0.8, inset=0.02)
 ```
