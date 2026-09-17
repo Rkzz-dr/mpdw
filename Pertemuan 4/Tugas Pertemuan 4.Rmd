@@ -1,0 +1,105 @@
+---
+title: "Tugas Pertemuan 4"
+author: "Rai Kazan"
+date: "2026-09-17"
+output:
+    html_document:
+    theme: flatly
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+---
+
+# Proses MA(2)
+
+## Pembangkitan MA(2) secara Manual
+
+```{r}
+set.seed(2406)
+wn <- rnorm(300)
+
+ma <- wn[1]
+ma[2] <- wn[2] + 0.4 * wn[1]
+
+for(i in 3:300) {
+  ma[i] <- wn[i] + 0.4 * wn[i-1] + 0.6 * wn[i-2]
+}
+ma
+```
+
+## Pembangkitan MA(2) dengan arima.sim
+
+```{r}
+ma2 <- arima.sim(list(order = c(0,0,2), ma = c(0.4, 0.6)), n = 300)
+ma2
+```
+
+## Plot Time Series
+
+```{r}
+ts.plot(ma)
+```
+
+Berdasarkan plot time series, terlihat bahwa data MA(2) yang dibangkitkan stasioner dalam rataan
+
+## Plot ACF
+
+```{r}
+acf(ma, lag.max = 20)
+```
+
+Berdasarkan plot ACF tersebut, terlihat bahwa plot ACF cuts off di lag kedua
+
+## Plot PACF
+
+```{r}
+pacf(ma)
+```
+
+Berdasarkan plot PACF tersebut, terlihat bahwa plot PACF cenderung tails off dan membentuk gelombang sinus
+
+## Plot EACF
+
+```{r}
+TSA::eacf(ma)
+```
+
+Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa batas sudut kiri atas segitiga nol berada pada ordo AR(0) dan ordo MA(2)
+
+## Scatterplot Antar Lag
+
+### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
